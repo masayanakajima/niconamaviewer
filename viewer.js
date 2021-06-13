@@ -1,8 +1,8 @@
 const fetch = require("node-fetch");
 const DOMParser = require("xmldom").DOMParser;
-const WebSocketClient = require("websocket").client;
+const WebSocket = require("ws");
 
-fetch("https://live.nicovideo.jp/watch/co2797258",{
+fetch("https://live.nicovideo.jp/watch/co1445646",{
   method:"GET",
 })
 .then(res =>
@@ -22,33 +22,22 @@ fetch("https://live.nicovideo.jp/watch/co2797258",{
   const frontendId = embeddedData.site.frontendId;
 
   //websocketクライアント
-  let client = new WebSocketClient({
-    headers: {
-      "User-Agent":"Mozilla/5.0 (platform; rv:geckoversion) Gecko/geckotrail Firefox/firefoxversion"
-    }
+  let client = new WebSocket(`wss://a.live2.nicovideo.jp/unama/wsapi/v2/watch/${broadcastId}?audience_token=${audienceToken}&frontend_id=${frontendId}`,{
+    headers:{"User-Agent":"firefox"}
   });
 
-  client.on("connectFailed", error => {
-    console.log("Connect Error: " + error.toString());
-  })
-
-  client.on("connect", connection => {
-    console.log("WebSocket Client Connected");
-
-    connection.on("error", error => {
-      console.log("Connection Error: "+ error.toString());
-    });
-
-    connection.on("close", () =>{
-      console.log("Connection Closed");
-    })
-
-    connection.on("message", message => {
-      if (message.type === "utf8") {
-        console.log("Received: "+ message.utf8Data);
-      }
-    });
+  client.on("open",function open() {
+    client.send(JSON.stringify({
+      "type": "startWatching",
+      "data": {
+        "stream": { "quality": "high", "protocol": "hls", "latency": "low", "chasePlay": false },
+        "room": { "protocol": "webSocket", "commentable": true },
+        "reconnect": false
+      },
+    }));
+  });
+  client.on("message",function incoming(data) {
+    console.log(data);
   });
 
-  client.connect(`wss://a.live2.nicovideo.jp/unama/wsapi/v2/watch/${broadcastId}?audience_token=${audienceToken}&frontend_id=${frontendId}`);
 });
