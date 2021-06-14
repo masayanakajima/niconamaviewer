@@ -2,20 +2,23 @@ const fetch = require("node-fetch");
 const DOMParser = require("xmldom").DOMParser;
 const WebSocket = require("ws");
 
-fetch("https://live.nicovideo.jp/watch/co2797258",{
+fetch(process.argv[2],{
   method:"GET",
 })
 .then(res =>
   res.text()
 )
 .then( res => {
-  //console.log(res)
   let parser = new DOMParser();
   const doc = parser.parseFromString(res, "text/html");
 
   //ページに埋め込まれた放送情報を取得する
   const embeddedData = JSON.parse(doc.getElementById("embedded-data").getAttribute("data-props"));
 
+  if (embeddedData.program.status === "ENDED") {
+    console.log("配信はすでに終了しています。")
+    return;
+  }
   //放送情報を取得する
   const broadcastId = embeddedData.program.broadcastId || embeddedData.program.reliveProgramId;
   const audienceToken = embeddedData.player.audienceToken;
@@ -36,12 +39,15 @@ fetch("https://live.nicovideo.jp/watch/co2797258",{
       },
     }));
   });
+
+
   client.on("message",function incoming(data) {
     const json = JSON.parse(data);
     console.log(json);
 
     if (json.data) {
-    //  console.log("aaa "+json.data)
+
+      //メッセージサーバーへ接続
       if (json.data.messageServer) {
         console.log(json);
         const wsUrl = json.data.messageServer.uri;
@@ -65,16 +71,33 @@ fetch("https://live.nicovideo.jp/watch/co2797258",{
           }));
         });
 
-        commentsocket.on("message",function incoming(chat) {
-          console.log(chat);
+        //チャットメッセージを表示する
+        commentsocket.on("message",function incoming(chat_data) {
+
+          const chat = JSON.parse(chat_data);
+
+          if(chat.chat) {
+            const no = chat.chat.no;
+            const date = chat.chat.date;
+            const user_id = chat.chat.user_id;
+            const mail = chat.chat.mail;
+            const content = chat.chat.content;
+            const dateTime = new Date(date * 1000).toLocaleTimeString("ja-JP");
+
+            //チャットをコンソール出力
+            console.log(`${no}|${user_id}|${dateTime}|${content}`);
+          }
         });
 
+        //40秒おきにPINGを送信する
         setInterval(() => {
           commentsocket.ping();
-          console.log("ping!!");
-        }, 60000);
+        }, 40000);
       }
     }
   });
 
+})
+.catch(error => {
+  console.log("fetch-error: "+error);
 });
