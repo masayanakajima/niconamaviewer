@@ -2,7 +2,7 @@ const fetch = require("node-fetch");
 const DOMParser = require("xmldom").DOMParser;
 const WebSocket = require("ws");
 
-fetch("https://live.nicovideo.jp/watch/co1445646",{
+fetch("https://live.nicovideo.jp/watch/co2797258",{
   method:"GET",
 })
 .then(res =>
@@ -37,7 +37,44 @@ fetch("https://live.nicovideo.jp/watch/co1445646",{
     }));
   });
   client.on("message",function incoming(data) {
-    console.log(data);
+    const json = JSON.parse(data);
+    console.log(json);
+
+    if (json.data) {
+    //  console.log("aaa "+json.data)
+      if (json.data.messageServer) {
+        console.log(json);
+        const wsUrl = json.data.messageServer.uri;
+        const threadId = json.data.threadId;
+        const commentsocket = new WebSocket(wsUrl, "niconama", {
+          "Sec-WebSocket-Extensions": "permessage-deflate; client_max_window_bits",
+          "Sec-WebSocket-Protocol": "msg.nicovide.jp#json",
+        });
+
+        commentsocket.on("open",function open(){
+          commentsocket.send(JSON.stringify({
+              "thread": {
+                "thread": threadId,
+                "version": "20061206",
+                "user_id": "guest",
+                "res_from": -150,
+                "with_global": 1,
+                "scores": 1,
+                "nicoru": 0
+              }
+          }));
+        });
+
+        commentsocket.on("message",function incoming(chat) {
+          console.log(chat);
+        });
+
+        setInterval(() => {
+          commentsocket.ping();
+          console.log("ping!!");
+        }, 60000);
+      }
+    }
   });
 
 });
