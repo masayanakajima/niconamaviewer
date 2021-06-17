@@ -85,7 +85,7 @@ fetch(process.argv[2],{
             const dateTime = new Date(date * 1000).toLocaleTimeString("ja-JP");
 
             //チャットをコンソール出力
-            console.log(`${no}|${user_id}|${dateTime}|${content}`);
+            console.log(`${no}|${dateTime}|${user_id}|${content}`);
           }
         });
 
